@@ -25,6 +25,7 @@ spec:
       containers:
       - name: mongodb
         image: {{ .Values.mongodb.image }}
+        args: ["--wiredTigerCacheSizeGB", "{{ .Values.mongodb.wiredTigerCacheSizeGB }}"]
         envFrom:
           - secretRef:
               name: mongodb-secret

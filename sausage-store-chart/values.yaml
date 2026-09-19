@@ -57,7 +57,7 @@ backend:
       memory: "256Mi"
       cpu: "100m"
     limits:
-      memory: "512Mi"
+      memory: "640Mi"
       cpu: "500m"
   containerPort: 8080
   livenessProbe:
@@ -91,7 +91,7 @@ backend-report:
       memory: "64Mi"
       cpu: "50m"
     limits:
-      memory: "128Mi"
+      memory: "192Mi"
       cpu: "200m"
   hpa:
     minReplicas: 1
@@ -112,7 +112,7 @@ infra:
         memory: "128Mi"
         cpu: "100m"
       limits:
-        memory: "256Mi"
+        memory: "320Mi"
         cpu: "400m"
   mongodb:
     image: mongo:7.0
@@ -125,11 +125,13 @@ infra:
       user: reports
       password: reportspassword
     containerPort: 27017
+    # Размер кэша WiredTiger (ГБ), чтобы mongod не упирался в memory limit
+    wiredTigerCacheSizeGB: 0.25
     storage: 1Gi
     resources:
       requests:
         memory: "128Mi"
         cpu: "50m"
       limits:
-        memory: "256Mi"
+        memory: "512Mi"
         cpu: "400m"
