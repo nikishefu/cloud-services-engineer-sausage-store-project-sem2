@@ -1,0 +1,63 @@
+---
+# Создаёт базу и пользователя для отчётов после того, как MongoDB установлена
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: mongodb-init
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+    app.kubernetes.io/managed-by: "{{ .Release.Service }}"
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    app.kubernetes.io/component: mongodb-init
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+  annotations:
+    helm.sh/hook: "post-install,post-upgrade"
+    helm.sh/hook-weight: "5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mongodb-init
+          image: {{ .Values.mongodb.image }}
+          envFrom:
+            - secretRef:
+                name: mongodb-secret
+          env:
+            - name: REPORTS_DB
+              value: {{ .Values.mongodb.reports.db | quote }}
+            - name: REPORTS_USER
+              value: {{ .Values.mongodb.reports.user | quote }}
+            - name: REPORTS_PASSWORD
+              value: {{ .Values.mongodb.reports.password | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              MONGO="mongosh --host mongodb --quiet -u $MONGO_INITDB_ROOT_USERNAME -p $MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin"
+              until $MONGO --eval "db.adminCommand('ping')"; do
+                echo "waiting for mongodb..."; sleep 3
+              done
+              $MONGO --eval "
+                const d = db.getSiblingDB(process.env.REPORTS_DB);
+                if (!d.getUser(process.env.REPORTS_USER)) {
+                  d.createUser({
+                    user: process.env.REPORTS_USER,
+                    pwd: process.env.REPORTS_PASSWORD,
+                    roles: [{ role: 'readWrite', db: process.env.REPORTS_DB }]
+                  });
+                  print('user created');
+                } else {
+                  print('user already exists');
+                }"
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
